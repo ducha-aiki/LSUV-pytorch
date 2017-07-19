@@ -85,6 +85,8 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
             if attempts > max_attempts:
                 print 'Cannot converge in ', max_attempts, 'iterations'
                 break
+        if gg['hook'] is not None:
+           gg['hook'].remove()
         gg['done_counter']+=1
         gg['hook']  = None
         print 'finish at layer',layer_idx 
