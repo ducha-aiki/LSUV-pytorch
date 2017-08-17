@@ -13,6 +13,19 @@ gg['counter_to_apply_correction'] = 0
 gg['correction_needed'] = False
 gg['current_coef'] = 1.0
 
+# Orthonorm init code is taked from Lasagne
+# https://github.com/Lasagne/Lasagne/blob/master/lasagne/init.py
+def svd_orthonormal(w):
+    shape = w.shape
+    if len(shape) < 2:
+        raise RuntimeError("Only shapes of length 2 or more are supported.")
+    flat_shape = (shape[0], np.prod(shape[1:]))
+    a = w;
+    u, _, v = np.linalg.svd(a, full_matrices=False)
+    q = u if u.shape == flat_shape else v
+    q = q.reshape(shape)
+    return q
+
 def store_activations(self, input, output):
     gg['act_dict'] = output.data.cpu().numpy();
     return
@@ -38,10 +51,9 @@ def remove_hooks(hooks):
         h.remove()
     return
 def orthogonal_weights_init(m):
-    if isinstance(m, nn.Conv2d):
-        nn.init.orthogonal(m.weight.data, gain=1.0)
-    if isinstance(m, nn.Linear):
-        nn.init.orthogonal(m.weight.data, gain=1.0)
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
+        w_ortho = svd_orthonormal(m.weight.data.numpy())  
+        m.weight.data = torch.from_numpy(w_ortho)
     return
 
 def apply_weights_correction(m):
