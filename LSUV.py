@@ -29,6 +29,7 @@ def svd_orthonormal(w):
 
 def store_activations(self, input, output):
     gg['act_dict'] = output.data.cpu().numpy();
+    #print('act shape = ', gg['act_dict'].shape)
     return
 
 
@@ -36,12 +37,12 @@ def add_current_hook(m):
     if gg['hook'] is not None:
         return
     if (isinstance(m, nn.Conv2d)) or (isinstance(m, nn.Linear)):
-        #print 'trying to hook to', m
+        #print 'trying to hook to', m, gg['hook_position'], gg['done_counter']
         if gg['hook_position'] > gg['done_counter']:
             gg['hook'] = m.register_forward_hook(store_activations)
-            #print 'layer = ', gg['hook_position'], m
+            #print ' hooking layer = ', gg['hook_position'], m
         else:
-            #print 'already done, skipping'
+            #print m, 'already done, skipping'
             gg['hook_position'] += 1
     return
 
@@ -59,12 +60,20 @@ def orthogonal_weights_init(m):
         if hasattr(m, 'weight_v'):
             w_ortho = svd_orthonormal(m.weight_v.data.cpu().numpy())
             m.weight_v.data = torch.from_numpy(w_ortho)
+            try:
+                nn.init.constant(m.bias, 0)
+            except:
+                pass
         else:
             #nn.init.orthogonal(m.weight)
             w_ortho = svd_orthonormal(m.weight.data.cpu().numpy())
             #print w_ortho 
             #m.weight.data.copy_(torch.from_numpy(w_ortho))
             m.weight.data = torch.from_numpy(w_ortho)
+            try:
+                nn.init.constant(m.bias, 0)
+            except:
+                pass
     return
 
 def apply_weights_correction(m):
@@ -78,7 +87,8 @@ def apply_weights_correction(m):
         else:
             if hasattr(m, 'weight_g'):
                 m.weight_g.data *= float(gg['current_coef'])
-                print m.weight_g.data
+                #print m.weight_g.data
+                #print m.weight_v.data
                 #print 'weights norm after = ', m.weight.data.norm()
                 gg['correction_needed'] = False
             else:
@@ -90,6 +100,7 @@ def apply_weights_correction(m):
     return
 
 def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = True, cuda = False):
+    model.eval();
     if cuda:
         model = model.cuda()
         data = data.cuda()
@@ -120,7 +131,7 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
                 model = model.cuda()
             out = model(data)
             current_std = gg['act_dict'].std()
-            print 'std at layer ',layer_idx, ' = ', current_std
+            print 'std at layer ',layer_idx, ' = ', current_std, 'mean = ', gg['act_dict'].mean()
             attempts+=1
             if attempts > max_attempts:
                 print 'Cannot converge in ', max_attempts, 'iterations'
@@ -128,6 +139,7 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
         if gg['hook'] is not None:
            gg['hook'].remove()
         gg['done_counter']+=1
+        gg['hook_position'] = 0
         gg['hook']  = None
         print 'finish at layer',layer_idx 
     print 'LSUV init done!'
