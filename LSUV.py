@@ -20,12 +20,12 @@ def svd_orthonormal(w):
     if len(shape) < 2:
         raise RuntimeError("Only shapes of length 2 or more are supported.")
     flat_shape = (shape[0], np.prod(shape[1:]))
-    a = w;
+    a = np.random.normal(0.0, 1.0, flat_shape)#w;
     u, _, v = np.linalg.svd(a, full_matrices=False)
     q = u if u.shape == flat_shape else v
     print shape, flat_shape
     q = q.reshape(shape)
-    return q
+    return q.astype(np.float32)
 
 def store_activations(self, input, output):
     gg['act_dict'] = output.data.cpu().numpy();
@@ -56,9 +56,15 @@ def remove_hooks(hooks):
     return
 def orthogonal_weights_init(m):
     if isinstance(m, nn.Conv2d) or isinstance(m, nn.Linear):
-        w_ortho = svd_orthonormal(m.weight.data.cpu().numpy())
-        #print w_ortho 
-        m.weight.data.copy_(torch.from_numpy(w_ortho))
+        if hasattr(m, 'weight_v'):
+            w_ortho = svd_orthonormal(m.weight_v.data.cpu().numpy())
+            m.weight_v.data = torch.from_numpy(w_ortho)
+        else:
+            #nn.init.orthogonal(m.weight)
+            w_ortho = svd_orthonormal(m.weight.data.cpu().numpy())
+            #print w_ortho 
+            #m.weight.data.copy_(torch.from_numpy(w_ortho))
+            m.weight.data = torch.from_numpy(w_ortho)
     return
 
 def apply_weights_correction(m):
@@ -70,10 +76,16 @@ def apply_weights_correction(m):
         if gg['counter_to_apply_correction'] < gg['hook_position']:
             gg['counter_to_apply_correction'] += 1
         else:
-            #print 'weights norm before = ', m.weight.data.norm()
-            m.weight.data *= gg['current_coef']
-            #print 'weights norm after = ', m.weight.data.norm()
-            gg['correction_needed'] = False
+            if hasattr(m, 'weight_g'):
+                m.weight_g.data *= float(gg['current_coef'])
+                print m.weight_g.data
+                #print 'weights norm after = ', m.weight.data.norm()
+                gg['correction_needed'] = False
+            else:
+                #print 'weights norm before = ', m.weight.data.norm()
+                m.weight.data *= gg['current_coef']
+                #print 'weights norm after = ', m.weight.data.norm()
+                gg['correction_needed'] = False
             return
     return
 
