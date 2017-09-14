@@ -139,6 +139,7 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
         if gg['hook'] is not None:
            gg['hook'].remove()
         gg['done_counter']+=1
+        gg['counter_to_apply_correction'] = 0
         gg['hook_position'] = 0
         gg['hook']  = None
         print 'finish at layer',layer_idx 
