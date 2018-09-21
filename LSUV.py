@@ -1,3 +1,4 @@
+from __future__ import print_function
 import numpy as np
 import torch
 import torch.nn.init
@@ -23,7 +24,7 @@ def svd_orthonormal(w):
     a = np.random.normal(0.0, 1.0, flat_shape)#w;
     u, _, v = np.linalg.svd(a, full_matrices=False)
     q = u if u.shape == flat_shape else v
-    print shape, flat_shape
+    print (shape, flat_shape)
     q = q.reshape(shape)
     return q.astype(np.float32)
 
@@ -100,6 +101,7 @@ def apply_weights_correction(m):
     return
 
 def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = True, cuda = False):
+    cuda = data.is_cuda
     model.eval();
     if cuda:
         model = model.cuda()
@@ -107,20 +109,20 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
     else:
         model = model.cpu()
         data = data.cpu() 
-    print 'Starting LSUV'
+    print( 'Starting LSUV')
     model.apply(count_conv_fc_layers)
-    print 'Total layers to process:', gg['total_fc_conv_layers']
+    print ('Total layers to process:', gg['total_fc_conv_layers'])
     if do_orthonorm:
         model.apply(orthogonal_weights_init)
-        print 'Orthonorm done'
+        print ('Orthonorm done')
         if cuda:
             model = model.cuda()
     for layer_idx in range(gg['total_fc_conv_layers']):
-        print layer_idx
+        print (layer_idx)
         model.apply(add_current_hook)
         out = model(data)
         current_std = gg['act_dict'].std()
-        print 'std at layer ',layer_idx, ' = ', current_std
+        print ('std at layer ',layer_idx, ' = ', current_std)
         #print  gg['act_dict'].shape
         attempts = 0
         while (np.abs(current_std - needed_std) > std_tol):
@@ -131,10 +133,10 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
                 model = model.cuda()
             out = model(data)
             current_std = gg['act_dict'].std()
-            print 'std at layer ',layer_idx, ' = ', current_std, 'mean = ', gg['act_dict'].mean()
+            print ('std at layer ',layer_idx, ' = ', current_std, 'mean = ', gg['act_dict'].mean())
             attempts+=1
             if attempts > max_attempts:
-                print 'Cannot converge in ', max_attempts, 'iterations'
+                print ('Cannot converge in ', max_attempts, 'iterations')
                 break
         if gg['hook'] is not None:
            gg['hook'].remove()
@@ -142,8 +144,8 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
         gg['counter_to_apply_correction'] = 0
         gg['hook_position'] = 0
         gg['hook']  = None
-        print 'finish at layer',layer_idx 
-    print 'LSUV init done!'
+        print ('finish at layer',layer_idx )
+    print ('LSUV init done!')
     if not cuda:
         model = model.cpu()
     return model
