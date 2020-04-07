@@ -10,12 +10,11 @@ from torch.autograd import Variable
 images_to_process = []
 for img_fname in os.listdir('imgs'):
     img = cv2.imread('imgs/' + img_fname)
-    print img.shape
+    print (img.shape)
     if img is not None:
         images_to_process.append(np.transpose(cv2.resize(img, (224,224)), (2,0,1) ))
         
 data = np.array(images_to_process).astype(np.float32)
-data = Variable(torch.from_numpy(data), volatile=True)
-alexnet = models.alexnet(pretrained=False)
-    
-alexnet = LSUVinit(alexnet,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = False)
+data = torch.from_numpy(data)
+alexnet = models.densenet121(pretrained=False)
+alexnet = LSUVinit(alexnet,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, needed_mean = 0., do_orthonorm = False)
