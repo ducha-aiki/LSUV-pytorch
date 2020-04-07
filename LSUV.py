@@ -95,7 +95,7 @@ def apply_weights_correction(m):
             return
     return
 
-def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = True,needed_mean = 0., cuda = False):
+def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = True,needed_mean = 0., cuda = False, verbose = True):
     cuda = data.is_cuda
     gg['total_fc_conv_layers']=0
     gg['done_counter']= 0
@@ -108,22 +108,22 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
     else:
         model = model.cpu()
         data = data.cpu() 
-    print( 'Starting LSUV')
+    if verbose: print( 'Starting LSUV')
     model.apply(count_conv_fc_layers)
-    print ('Total layers to process:', gg['total_fc_conv_layers'])
+    if verbose: print ('Total layers to process:', gg['total_fc_conv_layers'])
     with torch.no_grad():
         if do_orthonorm:
             model.apply(orthogonal_weights_init)
-            print ('Orthonorm done')
+            if verbose: print ('Orthonorm done')
         if cuda:
             model = model.cuda()
         for layer_idx in range(gg['total_fc_conv_layers']):
-            print (layer_idx)
+            if verbose: print (layer_idx)
             model.apply(add_current_hook)
             out = model(data)
             current_std = gg['act_dict'].std()
             current_mean = gg['act_dict'].mean()
-            print ('std at layer ',layer_idx, ' = ', current_std)
+            if verbose: print ('std at layer ',layer_idx, ' = ', current_std)
             #print  gg['act_dict'].shape
             attempts = 0
             while (np.abs(current_std - needed_std) > std_tol):
@@ -136,10 +136,10 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
                 out = model(data)
                 current_std = gg['act_dict'].std()
                 current_mean = gg['act_dict'].mean()
-                print ('std at layer ',layer_idx, ' = ', current_std, 'mean = ', current_mean)
+                if verbose: print ('std at layer ',layer_idx, ' = ', current_std, 'mean = ', current_mean)
                 attempts+=1
                 if attempts > max_attempts:
-                    print ('Cannot converge in ', max_attempts, 'iterations')
+                    if verbose: print ('Cannot converge in ', max_attempts, 'iterations')
                     break
             if gg['hook'] is not None:
                 gg['hook'].remove()
@@ -147,8 +147,8 @@ def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_
             gg['counter_to_apply_correction'] = 0
             gg['hook_position'] = 0
             gg['hook']  = None
-            print ('finish at layer',layer_idx )
-        print ('LSUV init done!')
+            if verbose: print ('finish at layer',layer_idx )
+        if verbose: print ('LSUV init done!')
         if not cuda:
             model = model.cpu()
     return model
