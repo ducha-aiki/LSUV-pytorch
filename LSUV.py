@@ -96,6 +96,7 @@ def apply_weights_correction(m):
     return
 
 def LSUVinit(model,data, needed_std = 1.0, std_tol = 0.1, max_attempts = 10, do_orthonorm = True,needed_mean = 0., cuda = False):
+    gg['total_fc_conv_layers']=0
     cuda = data.is_cuda
     model.eval();
     if cuda:
