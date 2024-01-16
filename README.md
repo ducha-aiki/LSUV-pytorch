@@ -1,5 +1,11 @@
 # Layer-sequential unit-variance (LSUV) initialization for PyTorch
 
+# NEW repo: [ducha-aiki/lsuv](https://github.com/ducha-aiki/lsuv)
+
+```
+pip install lsuv
+```
+
 This is sample code for LSUV and initializations, implemented in python script within PyTorch framework. 
 
 Usage:
